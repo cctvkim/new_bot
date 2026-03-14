@@ -78,11 +78,19 @@ def main():
             if now - runtime.last_heartbeat_ts >= HEARTBEAT_SECONDS:
                 runtime.last_heartbeat_ts = now
                 free_usdt = get_free_usdt(client)
+                
+                balance_info = client.fetch_futures_balance_info()
+                wallet_balance = float(balance_info["wallet_balance"])
+                available_balance = float(balance_info["available_balance"])
+                tradable_notional_10x = available_balance * 10.0
+
                 notifier.send(
                     f"[HEARTBEAT] symbol={SYMBOL} dry_run={DRY_RUN} hold={runtime.hold} "
                     f"position={order_manager.get_position_side()} amount={order_manager.get_position_amount()} "
                     f"entry={order_manager.get_entry_price()} mode={order_manager.get_entry_mode()} "
-                    f"dev_rung={runtime.dev_rung} free_usdt={free_usdt}"
+                    f"dev_rung={runtime.dev_rung} wallet={wallet_balance:.2f} "
+                    f"free_usdt={free_usdt:.2f}"
+                    f"available={available_balance:.2f} tradable_10x={tradable_notional_10x:.2f}"
                 )
 
             if runtime.hold:
@@ -102,6 +110,11 @@ def main():
             closes_15m = [float(c[4]) for c in ohlcv_15m]
             ma99_last = calculate_ma99(closes_15m)
             dev_pct_now = calculate_deviation_pct(current_price, ma99_last)
+            
+            balance_info = client.fetch_futures_balance_info()
+            wallet_balance = float(balance_info["wallet_balance"])
+            available_balance = float(balance_info["available_balance"])
+            tradable_notional_10x = available_balance * 10.0
 
             if order_manager.is_manual_position():
                 if (not runtime.manual_detected) or (now - runtime.last_manual_alert_ts >= 300):
@@ -164,7 +177,10 @@ def main():
                 logging.info(
                     f"IN POSITION side={order_manager.get_position_side()} "
                     f"entry={order_manager.get_entry_price()} amount={order_manager.get_position_amount()} "
-                    f"mode={order_manager.get_entry_mode()} dev_rung={runtime.dev_rung}"
+                    f"mode={order_manager.get_entry_mode()} dev_rung={runtime.dev_rung} "
+                    f"current_price={current_price} sma99={ma99_last:.4f} dev={dev_pct_now:.3f}% "
+                    f"wallet={wallet_balance:.2f} available={available_balance:.2f} "
+                    f"tradable_10x={tradable_notional_10x:.2f}"
                 )
                 time.sleep(POLL_INTERVAL)
                 continue
@@ -205,6 +221,8 @@ def main():
             logging.info(
                 f"NO SIGNAL current_price={current_price} "
                 f"sma99={ma99_last:.4f} dev={dev_pct_now:.3f}% "
+                f"wallet={wallet_balance:.2f} available={available_balance:.2f} "
+                f"tradable_10x={tradable_notional_10x:.2f} "
                 f"hold={runtime.hold} dev_rung={runtime.dev_rung}"
             )
             time.sleep(POLL_INTERVAL)

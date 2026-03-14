@@ -68,6 +68,37 @@ class BinanceFuturesClient:
         data = self.exchange.fetch_balance(params={"type": "future"})
         self.cache.set(key, data, ttl)
         return data
+    
+    def fetch_futures_balance_info(self, ttl: float = 30):
+        balance = self.fetch_balance(ttl=ttl)
+
+        total_usdt = 0.0
+        free_usdt = 0.0
+        used_usdt = 0.0
+
+        try:
+            usdt_info = balance.get("USDT", {}) or {}
+
+            total_usdt = float(usdt_info.get("total", 0.0) or 0.0)
+            free_usdt = float(usdt_info.get("free", 0.0) or 0.0)
+            used_usdt = float(usdt_info.get("used", 0.0) or 0.0)
+
+            # 혹시 ccxt 구조가 다르게 들어오는 경우 대비
+            if total_usdt == 0.0 and isinstance(balance.get("total"), dict):
+                total_usdt = float(balance["total"].get("USDT", 0.0) or 0.0)
+            if free_usdt == 0.0 and isinstance(balance.get("free"), dict):
+                free_usdt = float(balance["free"].get("USDT", 0.0) or 0.0)
+            if used_usdt == 0.0 and isinstance(balance.get("used"), dict):
+                used_usdt = float(balance["used"].get("USDT", 0.0) or 0.0)
+
+        except Exception as e:
+            logging.error(f"fetch_futures_balance_info error: {e}")
+
+        return {
+            "wallet_balance": total_usdt,
+            "available_balance": free_usdt,
+            "used_balance": used_usdt,
+        }
 
     def fetch_open_orders(self, symbol: str, ttl: float = 3):
         key = f"open_orders:{symbol}"
