@@ -1,0 +1,24 @@
+//@version=5
+indicator("SMA99 Deviation %", overlay=true)
+
+// 기준선
+length = input.int(99, minval=1, title="SMA Length")
+src = close
+sma99 = ta.sma(src, length)
+
+// 이격률(%)
+devPct = (close - sma99) / sma99 * 100
+
+// 차트 표시
+plot(sma99, title="SMA99", color=color.purple, linewidth=2)
+
+// 마지막 값 표시용 라벨/테이블
+var table t = table.new(position.top_right, 1, 3, border_width=1)
+
+if barstate.islast
+    table.cell(t, 0, 0, "SMA99: " + str.tostring(sma99, format.mintick))
+    table.cell(t, 0, 1, "Close: " + str.tostring(close, format.mintick))
+    table.cell(t, 0, 2, "Dev%: " + str.tostring(devPct, "#.##") + "%")
+
+// 필요하면 데이터 윈도우/패널용
+plot(devPct, title="Deviation %", color=color.orange, display=display.data_window)
